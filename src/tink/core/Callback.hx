@@ -64,7 +64,7 @@ abstract CallbackLink(LinkObject) from LinkObject {
   public inline function cancel():Void 
     if (this != null) this.cancel();
   
-  //@:deprecated('Use cancel() instead')
+  @:deprecated('Use cancel() instead')
   public inline function dissolve():Void 
     cancel();
 
@@ -108,15 +108,15 @@ private class LinkPair implements LinkObject {
   
   var a:CallbackLink;
   var b:CallbackLink;
-  var dissolved:Bool = false;
+  var cancelled:Bool = false;
   public function new(a, b) {
     this.a = a;
     this.b = b;
   }
 
   public function cancel() 
-    if (!dissolved) {
-      dissolved = true;
+    if (!cancelled) {
+      cancelled = true;
       a.cancel();
       b.cancel();
       a = null;

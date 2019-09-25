@@ -7,7 +7,7 @@ import #if haxe4 js.lib.Error #else js.Error #end as JsError;
 import #if haxe4 js.lib.Promise #else js.Promise #end as JsPromise;
 #end
 
-@:forward(handle, gather, eager)
+@:forward(handle, eager)
 abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
   
   public static var NULL:Future<Dynamic> = Future.sync(null);
@@ -36,23 +36,15 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
    *  Creates a new future by applying a transform function to the result.
    *  Different from `flatMap`, the transform function of `map` returns a sync value
    */
-  public inline function map<A>(f:T->A, ?gather = true):Future<A> {
-    var ret = this.map(f);
-    return
-      if (gather) ret.gather();
-      else ret;
-  }
+  public inline function map<A>(f:T->A):Future<A> 
+    return this.map(f);
   
   /**
    *  Creates a new future by applying a transform function to the result.
    *  Different from `map`, the transform function of `flatMap` returns a `Future`
    */
-  public inline function flatMap<A>(next:T->Future<A>, ?gather = true):Future<A> {
-    var ret = this.flatMap(next);
-    return
-      if (gather) ret.gather();
-      else ret;    
-  }  
+  public inline function flatMap<A>(next:T->Future<A>):Future<A> 
+    return this.flatMap(next);
   
   /**
    *  Like `map` and `flatMap` but with a polymorphic transformer and return a `Promise`
@@ -215,12 +207,6 @@ private interface FutureObject<T> {
    */
   function handle(callback:Callback<T>):CallbackLink;
   /**
-   *  Caches the result to ensure the underlying tranform is performed once only.
-   *  Useful for tranformed futures, such as product of `map` and `flatMap`
-   *  so that the transformation function will not be invoked for every callback
-   */
-  function gather():Future<T>;
-  /**
    *  Makes this future eager.
    *  Futures are lazy by default, i.e. it does not try to fetch the result until someone `handle` it
    */
@@ -233,7 +219,6 @@ private class NeverFuture<T> implements FutureObject<T> {
   public function map<R>(f:T->R):Future<R> return cast inst;
   public function flatMap<R>(f:T->Future<R>):Future<R> return cast inst;
   public function handle(callback:Callback<T>):CallbackLink return null;
-  public function gather():Future<T> return cast inst;
   public function eager():Future<T> return cast inst;
 }
 
@@ -256,9 +241,6 @@ private class SyncFuture<T> implements FutureObject<T> {
   }
 
   public function eager()
-    return this;
-
-  public function gather()
     return this;
 }
 
@@ -296,17 +278,11 @@ class FutureTrigger<T> implements FutureObject<T> {
         ret;
     }
 
-  public inline function gather()
-    return this;
-
   public function eager()
     return this;
 
   public inline function asFuture():Future<T>
     return this;
-
-  @:noUsing static public function gatherFuture<T>(f:Future<T>):Future<T> 
-    return new SuspendableFuture(function (yield) return f.handle(yield));
 
   /**
    *  Triggers a value for this future
@@ -387,9 +363,6 @@ private class SuspendableFuture<T> implements FutureObject<T> {//TODO: this has 
 
   public function flatMap<R>(f:T->Future<R>):Future<R>
     return Future.flatten(map(f));
-
-  public inline function gather():Future<T> 
-    return this;
 
   public inline function eager():Future<T> {
     handle(function () {});//TODO: very naive implementeation
