@@ -66,8 +66,16 @@ abstract Promise<T>(Surprise<T, Error>) from Surprise<T, Error> to Surprise<T, E
   public inline function swapError(e:Error):Promise<T> 
     return mapError(function(_) return e);
     
-  public function merge<A, R>(other:Promise<A>, merger:Combiner<T, A, R>):Promise<R> 
-    return next(function (t) return other.next(function (a) return merger(t, a)));
+  public function merge<A, R>(that:Promise<A>, combine:Combiner<T, A, R>):Promise<R> 
+    return 
+      Promise.lift(this.merge(that, function (a, b)
+        return switch [a, b] {
+          case [Failure(e), _] | [_, Failure(e)]: 
+            Failure(e);
+          case [Success(a), Success(b)]: 
+            Success(combine(a, b));
+        }
+      )).next(function (p) return p);
     
   @:noCompletion @:op(a && b) static public function and<A, B>(a:Promise<A>, b:Promise<B>):Promise<Pair<A, B>>
     return a.merge(b, function (a, b) return new Pair(a, b)); // TODO: a.merge(b, Pair.new); => File "src/typing/type.ml", line 555, characters 9-15: Assertion failed
@@ -341,10 +349,10 @@ abstract Recover<T>(Error->Future<T>) from Error->Future<T> {
 @:callable
 abstract Combiner<In1, In2, Out>(In1->In2->Promise<Out>) from In1->In2->Promise<Out> {
       
-  @:from static function ofSafe<In1, In2, Out>(f:In1->In2->Outcome<Out, Error>):Combiner<In1, In2, Out> 
+  @:from static function ofSync<In1, In2, Out>(f:In1->In2->Outcome<Out, Error>):Combiner<In1, In2, Out> 
     return function (x1, x2) return f(x1, x2);
     
-  @:from static function ofSync<In1, In2, Out>(f:In1->In2->Future<Out>):Combiner<In1, In2, Out> 
+  @:from static function ofSafe<In1, In2, Out>(f:In1->In2->Future<Out>):Combiner<In1, In2, Out> 
     return function (x1, x2) return f(x1, x2);
     
   @:from static function ofSafeSync<In1, In2, Out>(f:In1->In2->Out):Combiner<In1, In2, Out> 
