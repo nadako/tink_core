@@ -39,15 +39,6 @@ class Callbacks extends Base {
   }
   #end
   
-  public function testIgnore() {
-    var calls = 0;
-    var cbNoise:Callback<Noise> = function () calls++;
-    var cb:Callback<Int> = cbNoise;
-    cb.invoke(17);
-    asserts.assert(calls == 1);
-    return asserts.done();
-  }
-  
   public function testSimpleLink() {
     var calls = 0;
     var link:CallbackLink = function () calls++;

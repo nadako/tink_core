@@ -124,7 +124,7 @@ class Futures extends Base {
         else 0;
     
     var f = Future.ofMany(futures).map(sum.bind(_, 0)),
-      f2 = Future.ofMany(futures, false).map(sum.bind(_, 0));
+        f2 = Future.ofMany(futures).map(sum.bind(_, 0));
       
     asserts.assert(!read1);
     asserts.assert(!read2);

@@ -56,10 +56,17 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
   /**
    *  Merges two futures into one by applying the merger function on the two future values
    */
-  public function merge<A, R>(other:Future<A>, merger:T->A->R, ?gather = true):Future<R> 
-    return flatMap(function (t:T) {
-      return other.map(function (a:A) return merger(t, a), false);
-    }, gather);
+  public function merge<A, R>(that:Future<A>, combine:T->A->R):Future<R> 
+    return 
+      new SuspendableFuture<R>(function (yield) {
+        var aDone = false, bDone = false;
+        var aRes = null, bRes = null;
+        function check() if (aDone && bDone) yield(combine(aRes, bRes));
+        return 
+          this.handle(function (a) { aRes = a; aDone = true; check(); }).join(
+            that.handle(function (b) { bRes = b; bDone = true; check(); })
+          );
+      });
   
   /**
    *  Flattens `Future<Future<A>>` into `Future<A>`
@@ -70,7 +77,7 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
       var outer = f.handle(function (second) {
         inner = second.handle(yield);
       });
-      return outer.join(function () inner.dissolve());
+      return outer.join(function () inner.cancel());
     });
   
   #if js
@@ -93,26 +100,18 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
   /**
    *  Merges multiple futures into Future<Array<A>>
    */
-  static public function ofMany<A>(futures:Array<Future<A>>, ?gather:Bool = true) {
+  static public function ofMany<A>(futures:Array<Future<A>>) {
     var ret = sync([]);
     for (f in futures)
       ret = ret.flatMap(
         function (results:Array<A>) 
           return f.map(
             function (result) 
-              return results.concat([result]),
-            false
-          ),
-        false
+              return results.concat([result])
+          )
       );
-    return 
-      if (gather) ret.gather();
-      else ret;
+    return ret;
   }
-  
-  @:deprecated('Implicit cast from Array<Future> is deprecated, please use `ofMany` instead. Please create an issue if you find it useful, and don\'t want this cast removed.')
-  @:from static function fromMany<A>(futures:Array<Future<A>>):Future<Array<A>> 
-    return ofMany(futures);
   
   //TODO: use this as `sync` for 2.0
   @:noUsing static inline public function lazy<A>(l:Lazy<A>):Future<A>
@@ -130,18 +129,11 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
    *  Example: `var i = Future.async(function(cb) cb(1)); // Future<Int>`
    */
   #if python @:native('make') #end
-  @:noUsing static public function async<A>(f:(A->Void)->Void, ?lazy = false):Future<A> 
-    if (lazy) 
-      return new SuspendableFuture(function (yield) {
-        f(yield);
-        return null;
-      });
-    else {
-      var op = trigger();
-      var wrapped:Callback<A->Void> = f;
-      wrapped.invoke(op.trigger);
-      return op;      
-    }    
+  @:noUsing static public function async<A>(f:(A->Void)->Void):Future<A> 
+    return new SuspendableFuture(function (yield) {
+      f(yield);
+      return null;
+    });
     
   /**
    *  Same as `first`
@@ -153,7 +145,7 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
    *  Same as `first`, but use `Either` to handle the two different types
    */
   @:noCompletion @:op(a || b) static public function either<A, B>(a:Future<A>, b:Future<B>):Future<Either<A, B>>
-    return a.map(Either.Left, false).first(b.map(Either.Right, false));
+    return a.map(Either.Left).first(b.map(Either.Right));
       
   /**
    *  Uses `Pair` to merge two futures

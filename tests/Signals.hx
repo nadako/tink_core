@@ -59,18 +59,19 @@ class Signals extends Base {
     return asserts.done();
   }
 
-  public function testJoinNoGather() {
-    var s = signal1.join(signal2, false);
+  public function testJoin() {
+    var s = signal1.join(signal2);
+    
     asserts.assert(0 == handlers1.getLength());
     asserts.assert(0 == handlers2.getLength());
     
     var calls = 0;
     
     var link1 = s.handle(function () calls++),
-      link2 = s.handle(function () calls++);
+        link2 = s.handle(function () calls++);
     
-    asserts.assert(2 == handlers1.getLength());
-    asserts.assert(2 == handlers2.getLength());    
+    asserts.assert(1 == handlers1.getLength());
+    asserts.assert(1 == handlers2.getLength());    
     
     handlers1.trigger('foo');
     
@@ -88,55 +89,21 @@ class Signals extends Base {
     link1.cancel();
     
     asserts.assert(0 == handlers1.getLength());
-    asserts.assert(0 == handlers2.getLength());  
-    return asserts.done();  
-  }
-  
-  public function testJoinGather() {
-    var s = signal1.join(signal2);
-    
-    asserts.assert(1 == handlers1.getLength());
-    asserts.assert(1 == handlers2.getLength());
-    
-    var calls = 0;
-    
-    var link1 = s.handle(function () calls++),
-      link2 = s.handle(function () calls++);
-    
-    asserts.assert(1 == handlers1.getLength());
-    asserts.assert(1 == handlers2.getLength());    
-    
-    handlers1.trigger('foo');
-    
-    asserts.assert(2 == calls);
-    
-    handlers2.trigger('foo');
-    
-    asserts.assert(4 == calls);
-    
-    link2.cancel();
-    
-    asserts.assert(1 == handlers1.getLength());
-    asserts.assert(1 == handlers2.getLength());    
-    
-    link1.cancel();
-    
-    asserts.assert(1 == handlers1.getLength());
-    asserts.assert(1 == handlers2.getLength());
+    asserts.assert(0 == handlers2.getLength());
     return asserts.done();    
   }
   
   public function testMap() {
     var mapCalls = 0,
-      last = null;
+        last = null;
     var s = signal1.map(function (v) { mapCalls++; return last = v + v; } );
     
-    asserts.assert(1 == handlers1.getLength());
+    asserts.assert(0 == handlers1.getLength());
     
     var calls = 0;
     
     var link1 = s.handle(function () calls++),
-      link2 = s.handle(function () calls++);
+        link2 = s.handle(function () calls++);
     
     asserts.assert(1 == handlers1.getLength());
     
@@ -152,45 +119,15 @@ class Signals extends Base {
     
     link1.cancel();
     
-    asserts.assert(1 == handlers1.getLength());
-    return asserts.done();
-  }
-  
-  public function testMapNoGather() {
-    var mapCalls = 0,
-      last = null;
-    var s = signal1.map(function (v) { mapCalls++; return last = v + v; }, false);
-    
-    asserts.assert(0 == handlers1.getLength());
-    
-    var calls = 0;
-    
-    var link1 = s.handle(function () calls++),
-      link2 = s.handle(function () calls++);
-    
-    asserts.assert(2 == handlers1.getLength());
-    
-    handlers1.trigger('foo');
-    
-    asserts.assert(2 == calls);
-    asserts.assert(2 == mapCalls);
-    asserts.assert('foofoo' == last);
-    
-    link2.cancel();
-    
-    asserts.assert(1 == handlers1.getLength());
-    
-    link1.cancel();
-    
     asserts.assert(0 == handlers1.getLength());
     return asserts.done();
   }
-  
+    
   public function testFlatMap() {
     var mapCalls = 0,
-      out = '',
-      inQueueData = [for (i in 1...1000) Std.string(i)],
-      inQueue = [];
+        out = '',
+        inQueueData = [for (i in 1...1000) Std.string(i)],
+        inQueue = [];
     
     function make() {
       var f = Future.trigger();
@@ -203,13 +140,13 @@ class Signals extends Base {
     
     var s = signal1.flatMap(function (v1) { mapCalls++; return make().map(function (v2) return v1 + v2); });
     
-    asserts.assert(1 == handlers1.getLength());
+    asserts.assert(0 == handlers1.getLength());
     
     var calls = 0;
     
     var link1 = s.handle(function () calls++),
-      link2 = s.handle(function () calls++),
-      link3 = s.handle(function (v) out += v);
+        link2 = s.handle(function () calls++),
+        link3 = s.handle(function (v) out += v);
     
     asserts.assert(1 == handlers1.getLength());
 
@@ -246,68 +183,6 @@ class Signals extends Base {
     asserts.assert(6 == calls);
     asserts.assert(3 == mapCalls);
     asserts.assert('112233' == out);
-    return asserts.done();
-  }
-  
-  public function testFlatMapNoGather() {
-    var mapCalls = 0,
-      out = '',
-      inQueueData = [for (i in 1...1000) Std.string(i)],
-      inQueue = [];
-    
-    function make() {
-      var f = Future.trigger();
-      var data = inQueueData.shift();
-      inQueue.push(function () f.trigger(data));
-      return f.asFuture();
-    }
-    function step() 
-      inQueue.shift()();
-    
-    var s = signal1.flatMap(function (v1) { mapCalls++; return make().map(function (v2) return v1 + v2); }, false);
-    
-    asserts.assert(0 == handlers1.getLength());
-    
-    var calls = 0;
-    
-    var link1 = s.handle(function () calls++),
-      link2 = s.handle(function () calls++),
-      link3 = s.handle(function (v) out += v);
-    
-    asserts.assert(3 == handlers1.getLength());
-
-    asserts.assert(0 == calls);
-    asserts.assert(0 == mapCalls);
-    
-    handlers1.trigger('1');
-    
-    asserts.assert(0 == calls);
-    asserts.assert(3 == mapCalls);
-    
-    handlers1.trigger('2');
-    
-    asserts.assert(0 == calls);
-    asserts.assert(6 == mapCalls);
-    
-    asserts.assert('' == out);
-    
-    step();
-    
-    asserts.assert(1 == calls);
-    asserts.assert(6 == mapCalls);
-    asserts.assert('' == out);
-    
-    step();
-    
-    asserts.assert(2 == calls);
-    asserts.assert(6 == mapCalls);
-    asserts.assert('' == out);
-    
-    step();
-    
-    asserts.assert(2 == calls);
-    asserts.assert(6 == mapCalls);
-    asserts.assert('13' == out);
     return asserts.done();
   }  
 }

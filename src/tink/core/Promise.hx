@@ -13,11 +13,10 @@ abstract Promise<T>(Surprise<T, Error>) from Surprise<T, Error> to Surprise<T, E
   public static var NOISE:Promise<Noise> = Future.sync(Success(Noise));
   public static var NEVER:Promise<Dynamic> = Future.NEVER;
   
-  public inline function new(f:(T->Void)->(Error->Void)->Void, lazy = false) {
+  public inline function new(f:(T->Void)->(Error->Void)->Void) 
     this = Future.async(function(cb) {
       f(function(v) cb(Success(v)), function(e) cb(Failure(e)));
-    }, lazy);
-  }
+    });
   
   public inline function eager():Promise<T>
     return this.eager();
@@ -55,11 +54,11 @@ abstract Promise<T>(Surprise<T, Error>) from Surprise<T, Error> to Surprise<T, E
   @:to public function isSuccess():Future<Bool>
     return this.map(function (o) return o.isSuccess());
     
-  public function next<R>(f:Next<T, R>, ?gather = true):Promise<R> 
+  public function next<R>(f:Next<T, R>):Promise<R> 
     return this.flatMap(function (o) return switch o {
-        case Success(d): f(d);
-        case Failure(f): Future.sync(Failure(f));
-      }, gather);
+      case Success(d): f(d);
+      case Failure(f): Future.sync(Failure(f));
+    });
   
   public inline function swap<R>(v:R):Promise<R> 
     return this >> function(_) return v;
@@ -67,8 +66,8 @@ abstract Promise<T>(Surprise<T, Error>) from Surprise<T, Error> to Surprise<T, E
   public inline function swapError(e:Error):Promise<T> 
     return mapError(function(_) return e);
     
-  public function merge<A, R>(other:Promise<A>, merger:Combiner<T, A, R>, ?gather = true):Promise<R> 
-    return next(function (t) return other.next(function (a) return merger(t, a), false), gather);
+  public function merge<A, R>(other:Promise<A>, merger:Combiner<T, A, R>):Promise<R> 
+    return next(function (t) return other.next(function (a) return merger(t, a)));
     
   @:noCompletion @:op(a && b) static public function and<A, B>(a:Promise<A>, b:Promise<B>):Promise<Pair<A, B>>
     return a.merge(b, function (a, b) return new Pair(a, b)); // TODO: a.merge(b, Pair.new); => File "src/typing/type.ml", line 555, characters 9-15: Assertion failed
@@ -91,7 +90,7 @@ abstract Promise<T>(Surprise<T, Error>) from Surprise<T, Error> to Surprise<T, E
    * @param fallback A value to be used when all yields `None`
    * @return Promise<T>
    */
-  static public function iterate<A, R>(promises:Iterable<Promise<A>>, yield:Next<A, Option<R>>, fallback:Promise<R>, ?lazy):Promise<R> {
+  static public function iterate<A, R>(promises:Iterable<Promise<A>>, yield:Next<A, Option<R>>, fallback:Promise<R>):Promise<R> {
     return Future.async(function(cb) {
       var iter = promises.iterator();
       function next() {
@@ -110,7 +109,7 @@ abstract Promise<T>(Surprise<T, Error>) from Surprise<T, Error> to Surprise<T, E
           fallback.handle(cb);
       }
       next();
-    }, lazy);
+    });
   }
   
   /**
@@ -192,9 +191,9 @@ abstract Promise<T>(Surprise<T, Error>) from Surprise<T, Error> to Surprise<T, E
     return ofOutcome(Success(d));
     
   public static inline function lazy<T>(p:Lazy<Promise<T>>):Promise<T>
-    return Future.async(function(cb) p.get().handle(cb), true);
+    return Future.async(function(cb) p.get().handle(cb));
 
-  static public function inParallel<T>(a:Array<Promise<T>>, ?concurrency:Int, ?lazy:Bool):Promise<Array<T>> 
+  static public function inParallel<T>(a:Array<Promise<T>>, ?concurrency:Int):Promise<Array<T>> 
     return 
       if(a.length == 0) Future.sync(Success([]))
       else Future.async(function (cb) {
@@ -246,7 +245,7 @@ abstract Promise<T>(Surprise<T, Error>) from Surprise<T, Error> to Surprise<T, E
 
         if (sync) 
           links.cancel();
-      }, lazy);
+      });
   
   static public function inSequence<T>(a:Array<Promise<T>>):Promise<Array<T>> {
     
