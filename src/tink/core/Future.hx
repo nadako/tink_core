@@ -20,17 +20,10 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
   /**
    *  Creates a future that contains the first result from `this` or `other`
    */
-  public function first(other:Future<T>):Future<T> { // <-- consider making it lazy by default ... also pull down into FutureObject
-    var ret = Future.trigger();
-    var l1 = this.handle(ret.trigger);
-    var l2 = other.handle(ret.trigger);
-    var ret = ret.asFuture();
-    if (l1 != null)
-      ret.handle(l1);
-    if (l2 != null)
-      ret.handle(l2);
-    return ret;
-  }
+  public function first(that:Future<T>):Future<T> 
+    return new SuspendableFuture<T>(
+      yield -> this.handle(yield) & that.handle(yield)  
+    );
   
   /**
    *  Creates a new future by applying a transform function to the result.
