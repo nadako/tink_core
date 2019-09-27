@@ -44,14 +44,14 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
    *  @see `Next`
    */
   public function next<R>(n:Next<T, R>):Promise<R>
-    return this.flatMap(function (v) return n(v));
+    return this.flatMap(v -> n(v));
   
   /**
    *  Merges two futures into one by applying the merger function on the two future values
    */
   public function merge<A, R>(that:Future<A>, combine:T->A->R):Future<R> 
     return 
-      new SuspendableFuture<R>(function (yield) {
+      new SuspendableFuture<R>(yield -> {
         var aDone = false, bDone = false;
         var aRes = null, bRes = null;
         function check() if (aDone && bDone) yield(combine(aRes, bRes));
@@ -65,7 +65,7 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
    *  Flattens `Future<Future<A>>` into `Future<A>`
    */
   static public function flatten<A>(f:Future<Future<A>>):Future<A> 
-    return new SuspendableFuture<A>(function (yield) {
+    return new SuspendableFuture<A>(yield -> {
       var inner = null;
       var outer = f.handle(function (second) {
         inner = second.handle(yield);
@@ -78,7 +78,16 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
    *  Casts a js Promise into a Surprise
    */
   @:from static public function ofJsPromise<A>(promise:JsPromise<A>):Surprise<A, Error>
-    return Future.async(function(cb) promise.then(function(a) cb(Success(a))).catchError(function(e:JsError) cb(Failure(Error.withData(e.message, e)))));
+    return Future.async(
+      yield -> {
+        promise
+          .then(
+            a -> yield(Success(a)),
+            e -> yield(Failure(Error.ofJsError(e)))
+          );
+        null;
+      }
+    ).eager();
   #end
   
   @:from static inline function ofAny<T>(v:T):Future<T>
@@ -123,9 +132,9 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
    */
   #if python @:native('make') #end
   @:noUsing static public function async<A>(f:(A->Void)->Void):Future<A> 
-    return new SuspendableFuture(function (yield) {
+    return new SuspendableFuture(yield -> {
       f(yield);
-      return null;
+      null;
     });
     
   /**
@@ -147,22 +156,22 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
     return a.merge(b, function (a, b) return new Pair(a, b));
   
   @:noCompletion @:op(a >> b) static public function _tryFailingFlatMap<D, F, R>(f:Surprise<D, F>, map:D->Surprise<R, F>)
-    return f.flatMap(function (o) return switch o {
+    return f.flatMap(o -> switch o {
       case Success(d): map(d);
       case Failure(f): Future.sync(Failure(f));
     });
 
   @:noCompletion @:op(a >> b) static public function _tryFlatMap<D, F, R>(f:Surprise<D, F>, map:D->Future<R>):Surprise<R, F> 
-    return f.flatMap(function (o) return switch o {
+    return f.flatMap(o -> switch o {
       case Success(d): map(d).map(Success);
       case Failure(f): Future.sync(Failure(f));
     });
     
   @:noCompletion @:op(a >> b) static public function _tryFailingMap<D, F, R>(f:Surprise<D, F>, map:D->Outcome<R, F>)
-    return f.map(function (o) return o.flatMap(map));
+    return f.map(o -> o.flatMap(map));
 
   @:noCompletion @:op(a >> b) static public function _tryMap<D, F, R>(f:Surprise<D, F>, map:D->R)
-    return f.map(function (o) return o.map(map));    
+    return f.map(o -> o.map(map));    
   
   @:noCompletion @:op(a >> b) static public function _flatMap<T, R>(f:Future<T>, map:T->Future<R>)
     return f.flatMap(map);

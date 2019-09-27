@@ -262,11 +262,10 @@ abstract Promise<T>(Surprise<T, Error>) from Surprise<T, Error> to Surprise<T, E
         if (index == a.length) [];
         else
           a[index].next(
-            function (head) return loop(index+1).next(
-              function (tail) return [head].concat(tail)
+            head -> loop(index+1).next(
+              tail -> [head].concat(tail)
             )
-          );
-          
+          );          
 
     return loop(0);
   }
@@ -325,16 +324,16 @@ abstract Next<In, Out>(In->Promise<Out>) from In->Promise<Out> {
     }
 
   @:from static function ofSafe<In, Out>(f:In->Outcome<Out, Error>):Next<In, Out> 
-    return function (x) return f(x);
+    return x -> f(x);
     
   @:from static function ofSync<In, Out>(f:In->Future<Out>):Next<In, Out> 
-    return function (x) return f(x);
+    return x -> f(x);
     
   @:from static function ofSafeSync<In, Out>(f:In->Out):Next<In, Out> 
-    return function (x) return f(x);
+    return x -> f(x);
     
   @:op(a * b) static function _chain<A, B, C>(a:Next<A, B>, b:Next<B, C>):Next<A, C>
-    return function (v) return a(v).next(b);
+    return v -> a(v).next(b);
   
 }
 
@@ -343,28 +342,35 @@ private extern class Nonsense {}
 @:callable
 abstract Recover<T>(Error->Future<T>) from Error->Future<T> {
   @:from static function ofSync<T>(f:Error->T):Recover<T>
-    return function (e) return Future.sync(f(e));
+    return e -> Future.sync(f(e));
 }
 
 @:callable
 abstract Combiner<In1, In2, Out>(In1->In2->Promise<Out>) from In1->In2->Promise<Out> {
       
   @:from static function ofSync<In1, In2, Out>(f:In1->In2->Outcome<Out, Error>):Combiner<In1, In2, Out> 
-    return function (x1, x2) return f(x1, x2);
+    return (x1, x2) -> f(x1, x2);
     
   @:from static function ofSafe<In1, In2, Out>(f:In1->In2->Future<Out>):Combiner<In1, In2, Out> 
-    return function (x1, x2) return f(x1, x2);
+    return (x1, x2) -> f(x1, x2);
     
   @:from static function ofSafeSync<In1, In2, Out>(f:In1->In2->Out):Combiner<In1, In2, Out> 
-    return function (x1, x2) return f(x1, x2);
+    return (x1, x2) -> f(x1, x2);
 	
 }
 
 @:forward
 abstract PromiseTrigger<T>(FutureTrigger<Outcome<T, Error>>) from FutureTrigger<Outcome<T, Error>> to FutureTrigger<Outcome<T, Error>> {
-  public inline function new() this = Future.trigger();
-  public inline function resolve(v:T) return this.trigger(Success(v));
-  public inline function reject(e:Error) return this.trigger(Failure(e));
+  
+  public inline function new() 
+    this = Future.trigger();
+
+  public inline function resolve(v:T) 
+    return this.trigger(Success(v));
+
+  public inline function reject(e:Error) 
+    return this.trigger(Failure(e));
+
   @:to public inline function asPromise():Promise<T> return this.asFuture();
 }
 
