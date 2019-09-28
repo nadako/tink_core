@@ -32,7 +32,7 @@ class Callbacks extends Base {
     Callback.defer(count);
     Callback.defer(function () { 
       asserts.assert(counter == 2);
-    } );
+    });
     
     asserts.assert(counter == 0);
     return asserts.done();

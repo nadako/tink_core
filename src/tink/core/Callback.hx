@@ -133,7 +133,7 @@ private class ListCell<T> implements LinkObject {
   }
 
   public inline function invoke(data)
-    if (list != null) 
+    if (cb != null) 
       cb.invoke(data);
 
   public inline function clear() {
