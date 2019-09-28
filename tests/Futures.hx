@@ -163,8 +163,8 @@ class Futures extends Base {
     Future.delay(500, Noise).handle(function(_) {
       resolved = true;
       var dt = haxe.Timer.stamp() - now;
-      asserts.assert(dt > .49); // it may not be very exact
-      asserts.assert(dt < .51); // it may not be very exact
+      asserts.assert(dt > .4); // it may not be very exact
+      asserts.assert(dt < .6); // it may not be very exact
       asserts.done();
     });
     asserts.assert(!resolved);
