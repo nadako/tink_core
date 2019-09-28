@@ -22,6 +22,7 @@ class Callbacks extends Base {
   }
   
   #if (js || flash || haxe_ver >= 3.3)
+  #if java @:exclude #end
   public function testDefer() {
     
     var counter = 0;
