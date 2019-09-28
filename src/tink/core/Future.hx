@@ -331,7 +331,7 @@ private class SuspendableFuture<T> implements FutureObject<T> {//TODO: this has 
         result = value;
         link = null;//consider disolving
         wakeup = null;
-        list.invoke(value, true);
+        inline list.invoke(value, true);
     }
 
   public function handle(callback:Callback<T>):CallbackLink 

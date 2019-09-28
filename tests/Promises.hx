@@ -57,15 +57,18 @@ class Promises extends Base {
   @:variant(6, 10)
   @:variant(10, 10)
   @:variant(20, 10)
+  #if java @:exclude #end // apparently on java (or at least jvm) haxe.Timer callbacks get dispatched on different threads, which creates a race condition on running (or even causes timeouts)
   public function testThrottle(concurrency:Null<Int>, total:Int) {
     var maximum = 0;
     var running = 0;
-    
+
     function run():Promise<Noise> {
       running++;
       if(running > maximum) maximum = running;
       var future = Future.delay(100, Noise);
-      future.handle(function(_) running--);
+      future.handle(function(_) {
+        running--;
+      });
       return future;
     }
     var p = Promise.inParallel([for(i in 0...total) Promise.lazy(run)], concurrency);

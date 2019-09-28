@@ -9,14 +9,17 @@ abstract Callback<T>(T->Void) from (T->Void) {
     return this;
     
   static var depth = 0;
-  static inline var MAX_DEPTH = #if (interp && !eval) 100 #elseif python 200 #else 500 #end;
-  public function invoke(data:T):Void
+  static inline var MAX_DEPTH = #if (eval || python) 200 #else 500 #end;
+  public inline function invoke(data:T):Void
+    guarded(() -> this(data));
+    
+  @:extern static inline function guarded(fn:Void->Void):Void
     if (depth < MAX_DEPTH) {
       depth++;
-      (this)(data); //TODO: consider handling exceptions here (per opt-in?) to avoid a failing callback from taking down the whole app
+      fn(); //TODO: consider handling exceptions here (per opt-in?) to avoid a failing callback from taking down the whole app
       depth--;
     }
-    else Callback.defer(invoke.bind(data));
+    else Callback.defer(fn);
     
   @:from static function fromNiladic<A>(f:Void->Void):Callback<A> //inlining this seems to cause recursive implicit casts
     return #if js cast f #else function (_) f() #end;
@@ -27,7 +30,7 @@ abstract Callback<T>(T->Void) from (T->Void) {
         for (callback in callbacks)
           callback.invoke(v);
           
-  @:noUsing static public function defer(f:Void->Void) {
+  @:noUsing static public function defer(f:Void->Void) {//TODO: there should probably be a way to manually invoke pending deferred callbacks
     #if macro
       f();
     #elseif tink_runloop
@@ -178,7 +181,7 @@ class CallbackList<T> {
     
   public function invoke(data:T, ?destructive:Bool) 
     if (busy) 
-      queue.push(invoke.bind(data, destructive));//TODO: the wisdom of just queueing destructive invokations is questionable
+      queue.push(() -> invoke(data, destructive));//TODO: the wisdom of just queueing destructive invokations is questionable
     else {
       busy = true;
       

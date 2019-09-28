@@ -205,7 +205,7 @@ abstract Promise<T>(Surprise<T, Error>) from Surprise<T, Error> to Surprise<T, E
     return 
       if(a.length == 0) Future.sync(Success([]))
       else Future.async(function (cb) {
-        var result = [], 
+        var result = [for (i in 0...a.length) null], 
             pending = a.length,
             links:CallbackLink = null,
             linkArray = [],
@@ -337,7 +337,7 @@ abstract Next<In, Out>(In->Promise<Out>) from In->Promise<Out> {
   
 }
 
-private extern class Nonsense {}
+private abstract Nonsense(Dynamic) {}
 
 @:callable
 abstract Recover<T>(Error->Future<T>) from Error->Future<T> {
