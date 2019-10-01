@@ -182,7 +182,7 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
   /**
    *  Creates a new `FutureTrigger`
    */
-  @:noUsing static public inline function trigger<A>():FutureTrigger<A> 
+  @:noUsing static public inline function trigger<A>(?onStatusChange):FutureTrigger<A> 
     return new FutureTrigger();  
     
   @:noUsing static public function delay<T>(ms:Int, value:Lazy<T>):Future<T>
@@ -242,8 +242,8 @@ class FutureTrigger<T> implements FutureObject<T> {
   var result:T;
   var list:CallbackList<T>;
 
-  public function new() 
-    this.list = new CallbackList();
+  public function new(?onStatusChange) 
+    this.list = new CallbackList(onStatusChange);
   
   public function handle(callback:Callback<T>):CallbackLink
     return switch list {
