@@ -183,7 +183,7 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
    *  Creates a new `FutureTrigger`
    */
   @:noUsing static public inline function trigger<A>(?onStatusChange):FutureTrigger<A> 
-    return new FutureTrigger();  
+    return new FutureTrigger(onStatusChange);  
     
   @:noUsing static public function delay<T>(ms:Int, value:Lazy<T>):Future<T>
     return Future.async(function(cb) haxe.Timer.delay(function() cb(value.get()), ms));
