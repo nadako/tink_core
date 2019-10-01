@@ -313,13 +313,13 @@ private class SuspendableFuture<T> implements FutureObject<T> {//TODO: this has 
 
   public function new(wakeup) {
     this.wakeup = wakeup;
-    this.callbacks = new CallbackList();
-
-    callbacks.ondrain = function () if (callbacks != null) {
-      suspended = true;
-      link.cancel();
-      link = null;
-    }
+    this.callbacks = new CallbackList(
+      function (empty) if (empty && callbacks != null) {
+        suspended = true;
+        link.cancel();
+        link = null;
+      }      
+    );
   }
 
   function trigger(value:T) 

@@ -80,11 +80,11 @@ class Callbacks extends Base {
     asserts.assert(cb.length == 0);
     
     var calls = 0,
-      calls1 = 0,
-      calls2 = 0;
+        calls1 = 0,
+        calls2 = 0;
     
     var link1 = cb.add(function () { calls++; calls1++; } ),
-      link2 = cb.add(function (_) { calls++; calls2++; });
+        link2 = cb.add(function (_) { calls++; calls2++; });
     
     asserts.assert(cb.length == 2);
     
@@ -107,15 +107,26 @@ class Callbacks extends Base {
     asserts.assert(calls == 3);
     asserts.assert(calls1 == 1);
     asserts.assert(calls2 == 2);
-    return asserts.done();
     
+    return asserts.done();
   }
 
   public function testListCompaction() {
-    var list = new CallbackList();
+    var on = 0,
+        off = 0;
+    
+    var list = new CallbackList(empty ->
+      if (empty) on++
+      else off++
+    );
+    
     for (i in 0...100)
-      list.add(function () {}).cancel();
+      for (link in [for (i in 0...1 + Std.random(20)) list.add(function () {})])
+        link.cancel();
+    
     asserts.assert(list.length == 0);
+    asserts.assert(on == 100);
+    asserts.assert(off == 100);
     return asserts.done();
   }
 }

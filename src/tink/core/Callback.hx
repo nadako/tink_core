@@ -154,28 +154,34 @@ class CallbackList<T> {
   var cells:Array<ListCell<T>>;
 
   public var length(get, never):Int;
+    inline function get_length():Int 
+      return used;
   
   var used:Int = 0;
   var queue = [];
 
   public var busy(default, null):Bool = false;
-  public function new() {
+  public function new(?onStatusChange) {
     this.cells = [];
+    this.onStatusChange = onStatusChange;
   }
   
-  dynamic public function ondrain() {}
-
-  inline function get_length():Int 
-    return used;
+  var onStatusChange:Null<(empty:Bool)->Void>;
+  inline function changeStatus(empty)
+    switch onStatusChange {
+      case null:
+      case v: v(empty);
+    }
 
   inline function release() 
-    if (--used < length >> 1)
+    if (--used <= length >> 1)
       compact();  
   
   public inline function add(cb:Callback<T>):CallbackLink {
     var node = new ListCell(cb, this);//perhaps adding during and after destructive invokations should be disallowed altogether
     cells.push(node);
-    used++;
+    if (used++ == 0)  
+      changeStatus(false);
     return node;
   }
     
@@ -209,7 +215,7 @@ class CallbackList<T> {
     if (busy) return;
     else if (used == 0) {
       resize(0);
-      ondrain();
+      changeStatus(true);
     }
     else {
       var compacted = 0;
