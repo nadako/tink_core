@@ -182,8 +182,8 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
   /**
    *  Creates a new `FutureTrigger`
    */
-  @:noUsing static public inline function trigger<A>(?onStatusChange):FutureTrigger<A> 
-    return new FutureTrigger(onStatusChange);  
+  @:noUsing static public inline function trigger<A>(?onChangeCount):FutureTrigger<A> 
+    return new FutureTrigger(onChangeCount);  
     
   @:noUsing static public function delay<T>(ms:Int, value:Lazy<T>):Future<T>
     return Future.async(function(cb) haxe.Timer.delay(function() cb(value.get()), ms));
@@ -242,8 +242,8 @@ class FutureTrigger<T> implements FutureObject<T> {
   var result:T;
   var list:CallbackList<T>;
 
-  public function new(?onStatusChange) 
-    this.list = new CallbackList(onStatusChange);
+  public function new(?onChangeCount) 
+    this.list = new CallbackList(onChangeCount);
   
   public function handle(callback:Callback<T>):CallbackLink
     return switch list {
@@ -314,7 +314,7 @@ private class SuspendableFuture<T> implements FutureObject<T> {//TODO: this has 
   public function new(wakeup) {
     this.wakeup = wakeup;
     this.callbacks = new CallbackList(
-      function (empty) if (empty && callbacks != null) {
+      count -> if (count == 0 && callbacks != null) {
         suspended = true;
         link.cancel();
         link = null;
