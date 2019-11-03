@@ -117,14 +117,14 @@ abstract Future<T>(FutureObject<T>) from FutureObject<T> to FutureObject<T> {
 
   //TODO: use this as `sync` for 2.0
   @:noUsing static inline public function lazy<A>(l:Lazy<A>):Future<A>
-    return new SyncFuture(l);
+    return new SuspendableFuture<A>(done -> { done(l.get()); null; });
 
   /**
    *  Creates a sync future.
    *  Example: `var i = Future.sync(1); // Future<Int>`
    */
   @:noUsing static inline public function sync<A>(v:A):Future<A>
-    return new SyncFuture(v);
+    return new SuspendableFuture<A>(done -> { done(v); null; });
 
   /**
    *  Creates an async future
@@ -216,28 +216,6 @@ private class NeverFuture<T> implements FutureObject<T> {
   public function eager():Future<T> return cast inst;
 }
 
-private class SyncFuture<T> implements FutureObject<T> {
-
-  var value:Lazy<T>;
-
-  public inline function new(value)
-    this.value = value;
-
-  public inline function map<R>(f:T->R):Future<R>
-    return new SyncFuture(value.map(f));
-
-  public inline function flatMap<R>(f:T->Future<R>):Future<R>
-    return new SuspendableFuture(function (yield) return f(value.get()).handle(yield));
-
-  public function handle(cb:Callback<T>):CallbackLink {
-    cb.invoke(value);
-    return null;
-  }
-
-  public function eager()
-    return this;
-}
-
 class FutureTrigger<T> implements FutureObject<T> {
   var result:T;
   var list:CallbackList<T>;
@@ -278,7 +256,7 @@ class FutureTrigger<T> implements FutureObject<T> {
         var list = this.list;
         this.list = null;
         this.result = result;
-        list.invoke(result, true);
+        inline list.invoke(result, true);
         true;
       }
 }
@@ -324,7 +302,10 @@ private class SuspendableFuture<T> extends FutureTrigger<T> {//TODO: this has qu
   function arm()
     if (suspended) {
       suspended = false;
-      link = wakeup(trigger);
+      @:privateAccess Callback.guarded(function () switch wakeup {
+        case null:
+        case fn: link = fn(trigger);
+      });
     }
 
   override function handle(callback)

@@ -21,6 +21,20 @@ class Callbacks extends Base {
     return asserts.done();
   }
 
+  public function testGuarding()
+    return Future.async(done -> {
+      var i = 100000,
+          finished = true;
+      function rec()
+        if (--i == 0) {
+          asserts.assert(finished);
+          done(asserts.done());
+        }
+        else
+          @:privateAccess Callback.guarded(rec);
+      rec();
+    });
+
   #if (js || flash || haxe_ver >= 3.3)
   #if java @:exclude #end
   public function testDefer() {
