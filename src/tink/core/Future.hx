@@ -262,7 +262,7 @@ class FutureTrigger<T> implements FutureObject<T> {
   public function flatMap<R>(f:T->Future<R>):Future<R>
     return Future.flatten(map(f));
 
-  public function eager()
+  public function eager():Future<T>
     return this;
 
   public inline function asFuture():Future<T>
@@ -294,62 +294,53 @@ class JsPromiseTools {
 }
 #end
 
-private class SuspendableFuture<T> implements FutureObject<T> {//TODO: this has quite a bit of duplication with FutureTrigger
-  var callbacks:CallbackList<T>;
-  var result:T;
+private class SuspendableFuture<T> extends FutureTrigger<T> {//TODO: this has quite a bit of duplication with FutureTrigger
   var suspended:Bool = true;
   var link:CallbackLink;
+  var lazy:Bool = true;
   var wakeup:(T->Void)->CallbackLink;
 
   public function new(wakeup) {
-    this.wakeup = wakeup;
-    this.callbacks = new CallbackList(
-      count -> if (count == 0 && callbacks != null) {
+    super(
+      count -> if (count == 0 && lazy && list != null) {
         suspended = true;
         link.cancel();
         link = null;
       }
     );
+    this.wakeup = wakeup;
   }
 
-  function trigger(value:T)
-    switch callbacks {
-      case null:
-      case list:
-        callbacks = null;
-        suspended = false;
-        result = value;
+  override function trigger(value)
+    return
+      if (super.trigger(value)) {
+        link.dissolve();
         link = null;//consider disolving
         wakeup = null;
-        inline list.invoke(value, true);
+        true;
+      }
+      else false;
+
+  function arm()
+    if (suspended) {
+      suspended = false;
+      link = wakeup(trigger);
     }
 
-  public function handle(callback:Callback<T>):CallbackLink
-    return
-      switch callbacks {
-        case null:
-          callback.invoke(result);
-          null;
-        case v:
-          var ret = callbacks.add(callback);
-          if (suspended) {
-            suspended = false;
-            link = wakeup(trigger);
-          }
-          ret;
-      }
+  override function handle(callback)
+    return switch super.handle(callback) {
+      case null: null;
+      case ret:
+        inline arm();
+        ret;
+    }
 
-
-  public function map<R>(f:T->R):Future<R>
-    return new SuspendableFuture(function (yield) {
-      return this.handle(function (res) yield(f(res)));
-    });
-
-  public function flatMap<R>(f:T->Future<R>):Future<R>
-    return Future.flatten(map(f));
-
-  public inline function eager():Future<T> {
-    handle(function () {});//TODO: very naive implementeation
+  override public function eager():Future<T> {
+    if (lazy) {
+      lazy = false;
+      arm();
+      wakeup = null;
+    }
     return this;
   }
 
